@@ -1,0 +1,107 @@
+### Variables
+@baseUrl = http://localhost:3000
+@validAuth = Basic YWRtaW46c2VjcmV0MTIz
+@invalidAuth = Basic aW52YWxpZDppbnZhbGlk
+
+### ============================================
+### Test 1: GET avec authentification valide
+### ============================================
+GET {{baseUrl}}/api/query?name=John&age=25&city=Paris
+Authorization: {{validAuth}}
+
+> {%
+    client.test("Status code is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+
+    client.test("Response contains query parameters", function() {
+        client.assert(response.body.data.name === "John", "Name should be John");
+        client.assert(response.body.data.age === "25", "Age should be 25");
+        client.assert(response.body.data.city === "Paris", "City should be Paris");
+    });
+
+    client.test("Response has correct message", function() {
+        client.assert(response.body.message === "Paramètres reçus", "Message incorrect");
+    });
+%}
+
+### ============================================
+### Test 2: POST avec authentification valide
+### ============================================
+POST {{baseUrl}}/api/data
+Authorization: {{validAuth}}
+Content-Type: application/json
+
+{
+    "username": "testuser",
+    "email": "test@example.com",
+    "active": true
+}
+
+> {%
+    client.test("Status code is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+
+    client.test("Response contains body data", function() {
+        client.assert(response.body.data.username === "testuser", "Username should be testuser");
+        client.assert(response.body.data.email === "test@example.com", "Email incorrect");
+        client.assert(response.body.data.active === true, "Active should be true");
+    });
+
+    client.test("Response has correct message", function() {
+        client.assert(response.body.message === "Données reçues", "Message incorrect");
+    });
+%}
+
+### ============================================
+### Test 3: GET sans authentification - doit retourner 401
+### ============================================
+GET {{baseUrl}}/api/query?test=value
+
+> {%
+    client.test("Status code is 401 without auth", function() {
+        client.assert(response.status === 401, "Expected 401 but got " + response.status);
+    });
+
+    client.test("Response contains error message", function() {
+        client.assert(response.body.error === "Authentification requise", "Error message incorrect");
+    });
+%}
+
+### ============================================
+### Test 4: POST avec mauvaise authentification - doit retourner 401
+### ============================================
+POST {{baseUrl}}/api/data
+Authorization: {{invalidAuth}}
+Content-Type: application/json
+
+{
+    "test": "data"
+}
+
+> {%
+    client.test("Status code is 401 with invalid auth", function() {
+        client.assert(response.status === 401, "Expected 401 but got " + response.status);
+    });
+
+    client.test("Response contains error message for invalid credentials", function() {
+        client.assert(response.body.error === "Identifiants invalides", "Error message incorrect");
+    });
+%}
+
+### ============================================
+### Test 5: GET avec plusieurs paramètres complexes
+### ============================================
+GET {{baseUrl}}/api/query?items[]=a&items[]=b&filter=active&sort=desc
+Authorization: {{validAuth}}
+
+> {%
+    client.test("Status code is 200", function() {
+        client.assert(response.status === 200, "Expected 200 but got " + response.status);
+    });
+
+    client.test("Response data is not empty", function() {
+        client.assert(Object.keys(response.body.data).length > 0, "Data should not be empty");
+    });
+%}
